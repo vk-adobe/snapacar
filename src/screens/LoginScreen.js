@@ -29,14 +29,28 @@ export default function LoginScreen({ navigation }) {
   const [busy, setBusy] = useState(false);
 
   const extra = getExtra();
+  const webId = (extra.googleWebClientId || '').trim();
+  const androidId = (extra.googleAndroidClientId || '').trim();
+  const iosId = (extra.googleIosClientId || '').trim();
+  // expo-auth-session uses platform client id first, then falls back to `clientId` (see Google.js).
+  const googleClientIdFallback = webId || androidId || iosId;
   const hasGoogle =
     cloud &&
-    !!(extra.googleWebClientId || extra.googleAndroidClientId || extra.googleIosClientId);
+    !!googleClientIdFallback &&
+    (Platform.OS === 'web'
+      ? !!webId
+      : Platform.OS === 'android'
+        ? !!(androidId || webId)
+        : !!(iosId || webId));
 
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: extra.googleWebClientId || undefined,
-    iosClientId: extra.googleIosClientId || extra.googleWebClientId || undefined,
-    androidClientId: extra.googleAndroidClientId || extra.googleWebClientId || undefined,
+    webClientId: webId || undefined,
+    iosClientId: iosId || webId || undefined,
+    androidClientId: androidId || webId || undefined,
+    // Native: expo-auth-session resolves android/ios id as `platformId ?? clientId`; if all are missing,
+    // pass '' so invariant doesn't throw (Google UI is hidden when `hasGoogle` is false).
+    clientId:
+      googleClientIdFallback || (Platform.OS === 'web' ? undefined : ''),
   });
 
   useEffect(() => {
