@@ -1,6 +1,6 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../theme';
+import { colors, radius } from '../theme';
 import { StarRow } from './StarRow';
 
 export function ReviewCard({ review }) {
@@ -19,9 +19,17 @@ export function ReviewCard({ review }) {
       ) : null}
       <View style={styles.pad}>
         <View style={styles.head}>
-          <StarRow value={review.rating} readonly size={22} />
+          <View style={styles.leftMeta}>
+            {review.authorName ? (
+              <Text style={styles.author}>{review.authorName}</Text>
+            ) : null}
+            <StarRow value={review.rating} readonly size={20} />
+          </View>
           <Text style={styles.date}>{date}</Text>
         </View>
+        {review.licensePlate ? (
+          <Text style={styles.plate}>Plate · {review.licensePlate}</Text>
+        ) : null}
         {review.comment ? <Text style={styles.comment}>{review.comment}</Text> : null}
       </View>
     </View>
@@ -31,21 +39,23 @@ export function ReviewCard({ review }) {
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  photo: { width: '100%', height: 180, backgroundColor: colors.bg },
-  pad: { padding: 12 },
+  photo: { width: '100%', height: 180, backgroundColor: colors.bgElevated },
+  pad: { padding: 14 },
   head: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexWrap: 'wrap',
-    gap: 8,
   },
+  leftMeta: { flex: 1, marginRight: 8 },
+  author: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 6 },
   date: { fontSize: 12, color: colors.textMuted },
+  plate: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
   comment: { marginTop: 8, fontSize: 15, color: colors.text, lineHeight: 22 },
 });

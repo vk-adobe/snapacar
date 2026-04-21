@@ -2,12 +2,12 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppProvider, useApp } from './src/context/AppContext';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { colors } from './src/theme';
 
-function AppGate() {
-  const { ready } = useApp();
+function AppRoot() {
+  const { ready } = useAuth();
   if (!ready) {
     return (
       <View style={styles.boot}>
@@ -17,7 +17,7 @@ function AppGate() {
   }
   return (
     <>
-      <StatusBar style="dark" />
+      <StatusBar style="light" />
       <RootNavigator />
     </>
   );
@@ -26,9 +26,9 @@ function AppGate() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <AppGate />
-      </AppProvider>
+      <AuthProvider>
+        <AppRoot />
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

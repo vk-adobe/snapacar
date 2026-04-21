@@ -11,8 +11,9 @@ export function StarRow({ value, onChange, size = 28, readonly = false }) {
           onPress={readonly ? undefined : () => onChange?.(n)}
           disabled={readonly}
           hitSlop={8}
+          style={n > 1 ? { marginLeft: 6 } : null}
         >
-          <Text style={[styles.star, { fontSize: size, opacity: n <= value ? 1 : 0.25 }]}>
+          <Text style={[styles.star, { fontSize: size, opacity: n <= value ? 1 : 0.28 }]}>
             ★
           </Text>
         </Pressable>
@@ -22,18 +23,18 @@ export function StarRow({ value, onChange, size = 28, readonly = false }) {
 }
 
 export function StarText({ rating }) {
-  const r = Number(rating);
+  const r = Number(rating) || 0;
   return (
     <Text style={styles.starCompact}>
-      {'★'.repeat(Math.round(r))}
+      {'★'.repeat(Math.min(5, Math.round(r)))}
       <Text style={styles.muted}> ({r.toFixed(1)})</Text>
     </Text>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  row: { flexDirection: 'row', alignItems: 'center' },
   star: { color: colors.star, fontWeight: '600' },
-  starCompact: { color: colors.star, fontSize: 14 },
-  muted: { color: colors.textMuted, fontSize: 13 },
+  starCompact: { color: colors.star, fontSize: 14, fontWeight: '600' },
+  muted: { color: colors.textMuted, fontWeight: '400', fontSize: 13 },
 });
