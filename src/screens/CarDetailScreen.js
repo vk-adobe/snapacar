@@ -4,6 +4,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReviewCard } from '../components/ReviewCard';
 import { StarText } from '../components/StarRow';
+import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { parseCarKey } from '../utils/carKey';
 import { colors, radius } from '../theme';
@@ -12,7 +13,9 @@ import { shareCarSummary, sharePhoto } from '../utils/share';
 export default function CarDetailScreen({ route, navigation }) {
   const { carKey } = route.params;
   const insets = useSafeAreaInsets();
+  const { session } = useAuth();
   const { getReviewsForCarKey, averageRatingForCarKey, prefetchCarDetail, isCloud } = useApp();
+  const uid = session?.mode === 'cloud' ? session?.userId : null;
 
   useFocusEffect(
     useCallback(() => {
@@ -98,7 +101,16 @@ export default function CarDetailScreen({ route, navigation }) {
           reviews
             .slice()
             .reverse()
-            .map((r) => <ReviewCard key={r.id} review={r} />)
+            .map((r) => (
+              <ReviewCard
+                key={r.id}
+                review={r}
+                social={{
+                  enabled: isCloud && !!uid,
+                  currentUserId: uid,
+                }}
+              />
+            ))
         )}
       </ScrollView>
     </View>

@@ -51,11 +51,16 @@ alter table public.posts enable row level security;
 
 -- Profiles: authenticated users can read display info for feed; only owner can insert/update own row
 drop policy if exists "profiles_select_own" on public.profiles;
+drop policy if exists "profiles_select_feed" on public.profiles;
+drop policy if exists "profiles_insert_own" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_select_feed" on public.profiles for select to authenticated using (true);
 create policy "profiles_insert_own" on public.profiles for insert with check (auth.uid() = id);
 create policy "profiles_update_own" on public.profiles for update using (auth.uid() = id);
 
 -- Posts: anyone authenticated can read all posts (public feed)
+drop policy if exists "posts_select_authenticated" on public.posts;
+drop policy if exists "posts_insert_own" on public.posts;
 create policy "posts_select_authenticated" on public.posts for select to authenticated using (true);
 create policy "posts_insert_own" on public.posts for insert with check (auth.uid() = user_id);
 

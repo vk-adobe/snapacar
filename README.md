@@ -20,9 +20,13 @@ Edit `.env` with your Supabase URL and anon key, and Google OAuth client IDs as 
 ### Supabase
 
 1. Create a project at [supabase.com](https://supabase.com/dashboard).
-2. Run the SQL in `supabase/migrations/001_snapacar.sql` (SQL editor or [Supabase CLI](https://supabase.com/docs/guides/cli) migrations).
-3. **Storage:** create a public bucket named `car-images`, with policies so authenticated users can upload and the public can read (see comments at the bottom of that migration).
-4. **Auth:** enable the providers you use (e.g. Email and Google). For Google, configure OAuth client IDs in Google Cloud Console and in Supabase; match redirect URIs and (for Android) package + SHA per Expo/Android docs.
+2. In **SQL Editor**, run migrations **in order** (same project as your `.env` URL):
+   - `supabase/migrations/001_snapacar.sql` — core **`profiles`**, **`posts`**, RLS, credits trigger
+   - `supabase/migrations/002_storage_car_images.sql` — **`car-images`** bucket + storage policies
+   - `supabase/migrations/003_snapacar_social_leaderboard.sql` — **`post_comments`**, **`post_likes`**, **`post_reports`**, **`credit_ledger`**, **`leaderboard_cache`**, ledger rows on each post, `refresh_leaderboard_cache()`
+3. **Auth:** enable the providers you use (e.g. Email and Google). For Google, configure OAuth client IDs in Google Cloud Console and in Supabase; match redirect URIs and (for Android) package + SHA per Expo/Android docs.
+
+**`public` tables (this app):** `profiles`, `posts`, `post_comments`, `post_likes`, `post_reports`, `credit_ledger`, `leaderboard_cache`. The React app only uses `profiles` / `posts` today; the rest is ready for UI or RPCs (e.g. call `select refresh_leaderboard_cache('all_time');` in SQL or via `supabase.rpc` after posting).
 
 ### Optional: car image analysis (Edge Function)
 
@@ -48,10 +52,10 @@ Edit `.env` with your Supabase URL and anon key, and Google OAuth client IDs as 
 
 - `App.js` — root component
 - `src/navigation/` — stack and tab navigators
-- `src/screens/` — feed, capture, plate search, profile, auth
+- `src/screens/` — feed, capture, plate search, profile, leaderboard (**Rank** tab), auth
 - `src/context/` — `AuthContext`, `AppContext` (remote posts + local fallback)
 - `src/lib/supabase.js` — Supabase client
-- `src/services/` — remote posts, optional car analysis
+- `src/services/` — remote posts, optional car analysis, `social.js` (likes, comments, reports, leaderboard, credit ledger)
 - `supabase/` — SQL migrations and Edge Function sources
 
 ## License

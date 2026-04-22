@@ -14,10 +14,12 @@ import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CarCard } from '../components/CarCard';
 import { AppLogo } from '../components/AppLogo';
+import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { colors, radius } from '../theme';
 
 export default function FeedScreen({ navigation }) {
+  const { session } = useAuth();
   const { ready, filterSummaries, refreshRemoteFeed, isCloud } = useApp();
   const [q, setQ] = useState('');
   const insets = useSafeAreaInsets();
@@ -25,6 +27,8 @@ export default function FeedScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
 
   const rows = useMemo(() => filterSummaries(q), [filterSummaries, q]);
+  const credits =
+    session?.mode === 'cloud' ? session?.profile?.credits ?? 0 : null;
 
   const onRefresh = useCallback(async () => {
     if (!isCloud) return;
@@ -54,6 +58,12 @@ export default function FeedScreen({ navigation }) {
             {isCloud ? 'Photos from everyone' : 'Only on this device'}
           </Text>
         </View>
+        {credits != null && isCloud ? (
+          <View style={styles.creditsChip}>
+            <Ionicons name="flash" size={16} color={colors.star} />
+            <Text style={styles.creditsChipText}>{credits}</Text>
+          </View>
+        ) : null}
         <Pressable
           onPress={() => navigation.navigate('PlateSearch')}
           style={({ pressed }) => [styles.plateBtn, pressed && { opacity: 0.85 }]}
@@ -128,6 +138,18 @@ const styles = StyleSheet.create({
   headerText: { flex: 1 },
   title: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5 },
   sub: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  creditsChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: colors.primaryDim,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginRight: 8,
+  },
+  creditsChipText: { marginLeft: 5, color: colors.text, fontWeight: '800', fontSize: 15 },
   plateBtn: {
     width: 44,
     height: 44,

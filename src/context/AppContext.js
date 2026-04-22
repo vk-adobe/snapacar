@@ -1,9 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { makeCarKey, parseCarKey } from '../utils/carKey';
+import { getSupabase } from '../lib/supabase';
 import { fetchAllPosts, fetchPostsByCarKey, insertPost, uploadCarImage } from '../services/remotePosts';
+import { withTimeout } from '../utils/asyncTimeout';
 
 const STORAGE_KEY = '@snapacar_reviews_v3';
 
@@ -128,8 +130,20 @@ export function AppProvider({ children }) {
           comment,
           imageUrl,
         });
-        await refreshRemoteFeed();
-        await refreshProfile?.();
+        await withTimeout(refreshRemoteFeed(), 40000, 'Refresh feed').catch((e) =>
+          console.warn('refreshRemoteFeed', e)
+        );
+        await withTimeout(Promise.resolve(refreshProfile?.()), 20000, 'Refresh profile').catch((e) =>
+          console.warn('refreshProfile', e)
+        );
+        const sb = getSupabase();
+        if (sb) {
+          void withTimeout(
+            sb.rpc('refresh_leaderboard_cache', { p_scope: 'all_time' }),
+            12000,
+            'Leaderboard RPC'
+          ).catch(() => {});
+        }
         return { carKey };
       }
 

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { PostSocialBar } from './PostSocialBar';
 import { colors, radius } from '../theme';
 import { StarRow } from './StarRow';
 
-export function ReviewCard({ review }) {
+export function ReviewCard({ review, social }) {
   const date = review.createdAt
     ? new Date(review.createdAt).toLocaleDateString(undefined, {
         month: 'short',
@@ -31,6 +32,14 @@ export function ReviewCard({ review }) {
           <Text style={styles.plate}>Plate · {review.licensePlate}</Text>
         ) : null}
         {review.comment ? <Text style={styles.comment}>{review.comment}</Text> : null}
+        {social?.enabled && review.id ? (
+          <PostSocialBar
+            postId={review.id}
+            currentUserId={social.currentUserId}
+            postAuthorId={review.userId}
+            enabled={social.enabled}
+          />
+        ) : null}
       </View>
     </View>
   );

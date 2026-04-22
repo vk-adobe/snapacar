@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
@@ -7,6 +8,7 @@ import { StarText } from '../components/StarRow';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { colors, radius } from '../theme';
+import { fetchCreditLedger } from '../services/social';
 import { shareCarSummary } from '../utils/share';
 
 export default function ProfileScreen({ navigation }) {
@@ -21,6 +23,7 @@ export default function ProfileScreen({ navigation }) {
   const [city, setCity] = useState(p?.city || '');
   const [bio, setBio] = useState(p?.bio || '');
   const [saving, setSaving] = useState(false);
+  const [ledger, setLedger] = useState([]);
 
   useEffect(() => {
     if (p) {
@@ -29,6 +32,21 @@ export default function ProfileScreen({ navigation }) {
       setBio(p.bio || '');
     }
   }, [p?.phone, p?.city, p?.bio, p]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!cloud || session?.mode !== 'cloud' || !session?.userId) {
+        setLedger([]);
+        return;
+      }
+      const rows = await fetchCreditLedger(session.userId, 30);
+      if (!cancelled) setLedger(rows);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloud, session?.mode, session?.userId, session?.profile?.credits]);
 
   const onSaveProfile = async () => {
     if (!cloud) {
@@ -55,10 +73,46 @@ export default function ProfileScreen({ navigation }) {
       <View style={styles.profile}>
         <Text style={styles.name}>{session?.name || 'You'}</Text>
         <Text style={styles.email}>{session?.email}</Text>
-        {cloud && session?.profile ? (
-          <View style={styles.creditsRow}>
-            <Text style={styles.credits}>{session.profile.credits ?? 0} credits</Text>
-            <Text style={styles.creditsHint}>+10 each spot (server)</Text>
+        {cloud ? (
+          <View style={styles.creditsCard}>
+            <View style={styles.creditsCardTop}>
+              <Text style={styles.creditsLabel}>Spot credits</Text>
+              <Ionicons name="flash" size={22} color={colors.star} />
+            </View>
+            <Text style={styles.creditsBig}>{session?.profile?.credits ?? 0}</Text>
+            <Text style={styles.creditsSub}>
+              You earn credits when your posts hit the feed (see Supabase trigger).{'\n'}
+              <Text style={styles.creditsBold}>
+                Lifetime spots: {session?.profile?.lifetime_posts ?? 0}
+              </Text>
+            </Text>
+          </View>
+        ) : null}
+
+        {cloud && ledger.length > 0 ? (
+          <View style={styles.ledgerSection}>
+            <Text style={styles.secLabel}>Credit history</Text>
+            {ledger.map((row) => (
+              <View key={row.id} style={styles.ledgerRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ledgerReason}>
+                    {row.delta > 0 ? '+' : ''}
+                    {row.delta} · {row.reason}
+                  </Text>
+                  {row.balance_after != null ? (
+                    <Text style={styles.ledgerBalance}>Balance {row.balance_after}</Text>
+                  ) : null}
+                </View>
+                <Text style={styles.ledgerDate}>
+                  {row.created_at
+                    ? new Date(row.created_at).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                      })
+                    : ''}
+                </Text>
+              </View>
+            ))}
           </View>
         ) : null}
 
@@ -115,6 +169,7 @@ export default function ProfileScreen({ navigation }) {
       saving,
       logout,
       onSaveProfile,
+      ledger,
     ]
   );
 
@@ -189,9 +244,35 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 22, fontWeight: '800', color: colors.text },
   email: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
-  creditsRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 12 },
-  credits: { fontSize: 20, fontWeight: '800', color: colors.star },
-  creditsHint: { fontSize: 12, color: colors.textMuted, marginLeft: 10 },
+  creditsCard: {
+    marginTop: 16,
+    padding: 16,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryDim,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  creditsCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  creditsLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' },
+  creditsBig: { fontSize: 36, fontWeight: '800', color: colors.star, letterSpacing: -1 },
+  creditsSub: { fontSize: 13, color: colors.textMuted, lineHeight: 20, marginTop: 6 },
+  creditsBold: { fontWeight: '700', color: colors.text },
+  ledgerSection: { marginTop: 4, marginBottom: 8 },
+  ledgerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  ledgerReason: { fontSize: 14, color: colors.text, fontWeight: '600' },
+  ledgerBalance: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  ledgerDate: { fontSize: 12, color: colors.textMuted, marginLeft: 8 },
   secLabel: {
     marginTop: 14,
     fontSize: 11,

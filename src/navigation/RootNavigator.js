@@ -11,6 +11,7 @@ import AuthNavigator from './AuthNavigator';
 import CarDetailScreen from '../screens/CarDetailScreen';
 import CaptureScreen from '../screens/CaptureScreen';
 import FeedScreen from '../screens/FeedScreen';
+import LeaderboardScreen from '../screens/LeaderboardScreen';
 import PlateSearchScreen from '../screens/PlateSearchScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { colors } from '../theme';
@@ -104,6 +105,7 @@ function MainTabs() {
           const map = {
             Feed: 'grid-outline',
             Add: 'camera-outline',
+            Rank: 'trophy-outline',
             Profile: 'person-outline',
           };
           const name = map[route.name] || 'ellipse';
@@ -113,6 +115,7 @@ function MainTabs() {
     >
       <Tab.Screen name="Feed" component={FeedStack} options={{ title: 'Feed' }} />
       <Tab.Screen name="Add" component={SpotStack} options={{ title: 'Spot' }} />
+      <Tab.Screen name="Rank" component={LeaderboardScreen} options={{ title: 'Rank' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'You' }} />
     </Tab.Navigator>
   );

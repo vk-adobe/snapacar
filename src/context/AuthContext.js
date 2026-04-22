@@ -47,17 +47,36 @@ export function AuthProvider({ children }) {
     }
 
     async function init() {
-      if (cloud && sb) {
-        const { data: { session } } = await sb.auth.getSession();
-        if (!cancelled) setSupabaseSession(session ?? null);
-        if (session?.user?.id) {
-          const p = await fetchProfile(session.user.id);
-          if (!cancelled) setProfile(p);
+      try {
+        if (cloud && sb) {
+          // getSession can hang on bad network / storage; never block the UI forever.
+          const sessionResult = await Promise.race([
+            sb.auth.getSession(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('getSession timeout')), 15000)
+            ),
+          ]).catch((e) => {
+            console.warn('Auth getSession', e);
+            return { data: { session: null } };
+          });
+          const session = sessionResult?.data?.session ?? null;
+          if (!cancelled) setSupabaseSession(session);
+          if (session?.user?.id) {
+            try {
+              const p = await fetchProfile(session.user.id);
+              if (!cancelled) setProfile(p);
+            } catch (e) {
+              console.warn('Auth fetchProfile', e);
+            }
+          }
+        } else {
+          await loadLegacy();
         }
-      } else {
-        await loadLegacy();
+      } catch (e) {
+        console.warn('Auth init failed', e);
+      } finally {
+        if (!cancelled) setReady(true);
       }
-      if (!cancelled) setReady(true);
     }
 
     init();
@@ -121,13 +140,16 @@ export function AuthProvider({ children }) {
 
   const signUp = useCallback(async (email, password, displayName) => {
     if (cloud && getSupabase()) {
-      const { error } = await getSupabase().auth.signUp({
+      const { data, error } = await getSupabase().auth.signUp({
         email: email.trim(),
         password,
         options: { data: { full_name: displayName || email.split('@')[0] } },
       });
       if (error) throw error;
-      return;
+      if (!data.session) {
+        return { needsEmailConfirmation: true, email: email.trim() };
+      }
+      return { needsEmailConfirmation: false };
     }
     const em = email.trim().toLowerCase();
     if (!em || !password || password.length < 6) {
@@ -145,6 +167,7 @@ export function AuthProvider({ children }) {
     const sess = { email: em, name: accounts[em].name, mode: 'local' };
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(sess));
     setLegacySession(sess);
+    return { needsEmailConfirmation: false };
   }, [cloud]);
 
   const logout = useCallback(async () => {
