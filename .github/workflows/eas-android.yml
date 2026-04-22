@@ -1,0 +1,40 @@
+# Manual EAS Android build (standard `eas build`). Use this if Expo GitHub integration
+# `build:internal` fails until the project is linked (see README → EAS troubleshooting).
+name: EAS Android production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Require EAS secrets
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Missing GitHub secret EXPO_TOKEN (Expo account → Access tokens)."
+            exit 1
+          fi
+          if [ -z "$EAS_PROJECT_ID" ]; then
+            echo "::error::Missing GitHub secret EAS_PROJECT_ID (expo.dev → Project → copy Project ID / run eas init)."
+            exit 1
+          fi
+
+      - name: EAS build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+        run: npx eas-cli@latest build --platform android --profile production --non-interactive

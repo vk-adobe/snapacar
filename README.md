@@ -42,6 +42,17 @@ Edit `.env` with your Supabase URL and anon key, and Google OAuth client IDs as 
 | `npm run ios` | Build and run iOS (macOS + Xcode) |
 | `npm run web` | Run in the browser |
 
+### EAS Build & GitHub (non-interactive)
+
+1. **Link the project once** (local machine, interactive): `npx eas-cli login` then `npx eas-cli init`. That writes **`expo.extra.eas.projectId`** into `app.json` (merged by `app.config.js`). **Commit** that change — without it, **`eas build`** / Expo’s **`build:internal`** will exit with code **1** (“EAS project not configured”).
+2. **Or** set GitHub Actions secret **`EAS_PROJECT_ID`** to the UUID from [expo.dev](https://expo.dev) → your project → **Project settings** (same value as `extra.eas.projectId`). `app.config.js` reads **`process.env.EAS_PROJECT_ID`** and injects it into **`extra.eas`** for CI.
+3. Set **`EXPO_TOKEN`** in GitHub repo secrets (Expo account → Access tokens).
+4. **`eas.json`** sets **`cli.appVersionSource": "local"`** so native versions come from **`app.json`** `version` (see [app versions](https://docs.expo.dev/build-reference/app-versions/)).
+
+**If Expo GitHub integration fails** with `npx … eas-cli@… build:internal … exited with code 1`: open the **full job log** in GitHub or Expo — the line above the exit is the real error. Most often it is **missing `projectId`** (fix step 1–2) or **invalid `EXPO_TOKEN`**.
+
+**Manual build from GitHub:** Actions → **EAS Android production** → Run workflow (requires **`EXPO_TOKEN`** and **`EAS_PROJECT_ID`** secrets). This uses **`eas build`**, not `build:internal`.
+
 ## Development notes
 
 - **Updates:** Expo Updates OTA is disabled in `app.json` (`updates.enabled: false`). You get new JavaScript from Metro while developing, or by rebuilding/reinstalling release builds—not from Expo’s update servers.
