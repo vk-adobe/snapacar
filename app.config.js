@@ -10,6 +10,7 @@ try {
 const appJson = require('./app.json');
 
 const baseExtra = appJson.expo?.extra || {};
+const easProjectIdFromEnv = (process.env.EAS_PROJECT_ID || '').trim();
 
 module.exports = {
   ...appJson,
@@ -20,9 +21,7 @@ module.exports = {
       ...baseExtra,
       eas: {
         ...baseExtra.eas,
-        ...(process.env.EAS_PROJECT_ID
-          ? { projectId: process.env.EAS_PROJECT_ID }
-          : {}),
+        ...(easProjectIdFromEnv ? { projectId: easProjectIdFromEnv } : {}),
       },
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || baseExtra.supabaseUrl || '',
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || baseExtra.supabaseAnonKey || '',

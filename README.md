@@ -45,11 +45,24 @@ Edit `.env` with your Supabase URL and anon key, and Google OAuth client IDs as 
 ### EAS Build & GitHub (non-interactive)
 
 1. **Link the project once** (local machine, interactive): `npx eas-cli login` then `npx eas-cli init`. That writes **`expo.extra.eas.projectId`** into `app.json` (merged by `app.config.js`). **Commit** that change — without it, **`eas build`** / Expo’s **`build:internal`** will exit with code **1** (“EAS project not configured”).
-2. **Or** set GitHub Actions secret **`EAS_PROJECT_ID`** to the UUID from [expo.dev](https://expo.dev) → your project → **Project settings** (same value as `extra.eas.projectId`). `app.config.js` reads **`process.env.EAS_PROJECT_ID`** and injects it into **`extra.eas`** for CI.
+2. **Or** for **your own** Actions (e.g. the **EAS Android production** workflow), set secret **`EAS_PROJECT_ID`**. `app.config.js` reads **`process.env.EAS_PROJECT_ID`** and injects **`extra.eas.projectId`**. Expo’s **`build:internal`** integration often **does not** expose that secret to config resolution — in that case use step 1 or **`npm run eas:link`** below and **commit `app.json`**.
 3. Set **`EXPO_TOKEN`** in GitHub repo secrets (Expo account → Access tokens).
 4. **`eas.json`** sets **`cli.appVersionSource": "local"`** so native versions come from **`app.json`** `version` (see [app versions](https://docs.expo.dev/build-reference/app-versions/)).
 
-**If Expo GitHub integration fails** with `npx … eas-cli@… build:internal … exited with code 1`: open the **full job log** in GitHub or Expo — the line above the exit is the real error. Most often it is **missing `projectId`** (fix step 1–2) or **invalid `EXPO_TOKEN`**.
+**If you see `EAS project not configured` / `build:internal` failed:** Expo’s GitHub job only sees a linked project if **`expo.extra.eas.projectId`** is in **`app.json`** (or **`EAS_PROJECT_ID`** is set in the environment when config is evaluated — `app.config.js` supports that for custom Actions).
+
+1. Copy **Project ID** from [expo.dev](https://expo.dev) → your project → **Project settings**.
+2. In the repo root (after `npx eas-cli login` if prompted):
+
+   ```bash
+   EAS_PROJECT_ID=<your-uuid> npm run eas:link
+   ```
+
+   That runs `eas init --non-interactive --id … --force` and updates **`app.json`**.
+
+3. **Commit and push** `app.json` (Expo’s integration clones the repo; without a committed id it often cannot link in non-interactive mode).
+
+4. Confirm **GitHub** has secret **`EXPO_TOKEN`** (Expo → Access tokens) if the integration uses it.
 
 **Manual build from GitHub:** Actions → **EAS Android production** → Run workflow (requires **`EXPO_TOKEN`** and **`EAS_PROJECT_ID`** secrets). This uses **`eas build`**, not `build:internal`.
 

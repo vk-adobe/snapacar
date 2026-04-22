@@ -1,7 +1,8 @@
 {
   "expo": {
+    "owner": "vkhandelwaladobe",
     "name": "SnapACar",
-    "slug": "SnapACar",
+    "slug": "snapacar",
     "version": "1.0.0",
     "runtimeVersion": "1.0.0",
     "orientation": "portrait",
