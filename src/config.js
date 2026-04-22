@@ -1,11 +1,7 @@
-import Constants from 'expo-constants';
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-const extra = Constants.expoConfig?.extra ?? {};
+export const isSupabaseConfigured = () =>
+  !!(supabaseUrl.startsWith('https://') && supabaseUrl.includes('.supabase.co') && supabaseAnonKey.length > 20);
 
-export const isSupabaseConfigured = () => {
-  const url = extra.supabaseUrl || '';
-  const key = extra.supabaseAnonKey || '';
-  return !!(url.startsWith('https://') && url.includes('.supabase.co') && key.length > 20);
-};
-
-export const getExtra = () => extra;
+export const getExtra = () => ({ supabaseUrl, supabaseAnonKey });

@@ -1,6 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -31,7 +42,7 @@ export default function ProfileScreen({ navigation }) {
       setCity(p.city || '');
       setBio(p.bio || '');
     }
-  }, [p?.phone, p?.city, p?.bio, p]);
+  }, [p?.phone, p?.city, p?.bio]);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,9 +54,7 @@ export default function ProfileScreen({ navigation }) {
       const rows = await fetchCreditLedger(session.userId, 30);
       if (!cancelled) setLedger(rows);
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [cloud, session?.mode, session?.userId, session?.profile?.credits]);
 
   const onSaveProfile = async () => {
@@ -55,11 +64,7 @@ export default function ProfileScreen({ navigation }) {
     }
     setSaving(true);
     try {
-      await updateProfileFields({
-        phone: phone.trim(),
-        city: city.trim(),
-        bio: bio.trim(),
-      });
+      await updateProfileFields({ phone: phone.trim(), city: city.trim(), bio: bio.trim() });
       Alert.alert('Saved', 'Profile updated.');
     } catch (e) {
       Alert.alert('Error', e.message || 'Could not save.');
@@ -68,126 +73,125 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const headerBlock = useCallback(
-    () => (
-      <View style={styles.profile}>
-        <Text style={styles.name}>{session?.name || 'You'}</Text>
-        <Text style={styles.email}>{session?.email}</Text>
-        {cloud ? (
-          <View style={styles.creditsCard}>
-            <View style={styles.creditsCardTop}>
-              <Text style={styles.creditsLabel}>Spot credits</Text>
-              <Ionicons name="flash" size={22} color={colors.star} />
-            </View>
-            <Text style={styles.creditsBig}>{session?.profile?.credits ?? 0}</Text>
-            <Text style={styles.creditsSub}>
-              You earn credits when your posts hit the feed (see Supabase trigger).{'\n'}
-              <Text style={styles.creditsBold}>
-                Lifetime spots: {session?.profile?.lifetime_posts ?? 0}
-              </Text>
-            </Text>
-          </View>
-        ) : null}
-
-        {cloud && ledger.length > 0 ? (
-          <View style={styles.ledgerSection}>
-            <Text style={styles.secLabel}>Credit history</Text>
-            {ledger.map((row) => (
-              <View key={row.id} style={styles.ledgerRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.ledgerReason}>
-                    {row.delta > 0 ? '+' : ''}
-                    {row.delta} · {row.reason}
-                  </Text>
-                  {row.balance_after != null ? (
-                    <Text style={styles.ledgerBalance}>Balance {row.balance_after}</Text>
-                  ) : null}
-                </View>
-                <Text style={styles.ledgerDate}>
-                  {row.created_at
-                    ? new Date(row.created_at).toLocaleDateString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : ''}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {cloud ? (
-          <>
-            <Text style={styles.secLabel}>Phone</Text>
-            <TextInput
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+1…"
-              placeholderTextColor={colors.textMuted}
-              style={styles.field}
-              keyboardType="phone-pad"
-            />
-            <Text style={styles.secLabel}>City</Text>
-            <TextInput
-              value={city}
-              onChangeText={setCity}
-              placeholder="Where you usually drive"
-              placeholderTextColor={colors.textMuted}
-              style={styles.field}
-            />
-            <Text style={styles.secLabel}>Bio</Text>
-            <TextInput
-              value={bio}
-              onChangeText={setBio}
-              placeholder="A line about you & cars"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.field, styles.bio]}
-              multiline
-            />
-            <PrimaryButton
-              title="Save profile"
-              onPress={onSaveProfile}
-              loading={saving}
-              disabled={saving}
-            />
-          </>
-        ) : (
-          <Text style={styles.localHint}>Local account — enable Supabase for synced profile & credits.</Text>
-        )}
-
-        <View style={styles.signOut}>
-          <PrimaryButton title="Sign out" onPress={logout} variant="outline" />
-        </View>
-      </View>
-    ),
-    [
-      session,
-      cloud,
-      phone,
-      city,
-      bio,
-      saving,
-      logout,
-      onSaveProfile,
-      ledger,
-    ]
-  );
+  const initials = (session?.name || 'Y')
+    .split(' ')
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + 12 }]}>
-      <FlatList
-        style={styles.list}
-        data={mine}
-        keyExtractor={(item) => item.id}
-        ListHeaderComponent={headerBlock}
-        contentContainerStyle={{ paddingBottom: tabBarHeight + 24, flexGrow: 1 }}
-        ListEmptyComponent={
-          !ready ? null : (
-            <Text style={styles.empty}>No spots yet. Use Spot when you see something good.</Text>
-          )
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
+    <KeyboardAvoidingView
+      style={[styles.root, { paddingTop: insets.top + 12 }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile card */}
+        <View style={styles.profile}>
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          </View>
+          <Text style={styles.name}>{session?.name || 'You'}</Text>
+          <Text style={styles.email}>{session?.email}</Text>
+
+          {cloud ? (
+            <View style={styles.creditsCard}>
+              <View style={styles.creditsCardTop}>
+                <Text style={styles.creditsLabel}>Spot credits</Text>
+                <Ionicons name="flash" size={22} color={colors.star} />
+              </View>
+              <Text style={styles.creditsBig}>{session?.profile?.credits ?? 0}</Text>
+              <Text style={styles.creditsSub}>
+                You earn credits when your posts hit the feed.{'\n'}
+                <Text style={styles.creditsBold}>
+                  Lifetime spots: {session?.profile?.lifetime_posts ?? 0}
+                </Text>
+              </Text>
+            </View>
+          ) : null}
+
+          {cloud && ledger.length > 0 ? (
+            <View style={styles.ledgerSection}>
+              <Text style={styles.secLabel}>Credit history</Text>
+              {ledger.map((row) => (
+                <View key={row.id} style={styles.ledgerRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.ledgerReason}>
+                      {row.delta > 0 ? '+' : ''}{row.delta} · {row.reason}
+                    </Text>
+                    {row.balance_after != null ? (
+                      <Text style={styles.ledgerBalance}>Balance {row.balance_after}</Text>
+                    ) : null}
+                  </View>
+                  <Text style={styles.ledgerDate}>
+                    {row.created_at
+                      ? new Date(row.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                      : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {cloud ? (
+            <>
+              <Text style={styles.secLabel}>Phone</Text>
+              <TextInput
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+1…"
+                placeholderTextColor={colors.textMuted}
+                style={styles.field}
+                keyboardType="phone-pad"
+              />
+              <Text style={styles.secLabel}>City</Text>
+              <TextInput
+                value={city}
+                onChangeText={setCity}
+                placeholder="Where you usually drive"
+                placeholderTextColor={colors.textMuted}
+                style={styles.field}
+              />
+              <Text style={styles.secLabel}>Bio</Text>
+              <TextInput
+                value={bio}
+                onChangeText={setBio}
+                placeholder="A line about you & cars"
+                placeholderTextColor={colors.textMuted}
+                style={[styles.field, styles.bio]}
+                multiline
+              />
+              <PrimaryButton
+                title="Save profile"
+                onPress={onSaveProfile}
+                loading={saving}
+                disabled={saving}
+              />
+            </>
+          ) : (
+            <Text style={styles.localHint}>
+              Local account — enable Supabase for synced profile & credits.
+            </Text>
+          )}
+
+          <View style={styles.signOut}>
+            <PrimaryButton title="Sign out" onPress={logout} variant="outline" />
+          </View>
+        </View>
+
+        {/* My spots */}
+        {ready && mine.length === 0 ? (
+          <Text style={styles.empty}>No spots yet. Use Spot when you see something good.</Text>
+        ) : null}
+
+        {mine.map((item) => (
+          <View key={item.id} style={styles.card}>
             <Pressable
               onPress={() =>
                 navigation.navigate('Feed', {
@@ -224,15 +228,14 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.shareText}>Share</Text>
             </Pressable>
           </View>
-        )}
-      />
-    </View>
+        ))}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
-  list: { flex: 1 },
   profile: {
     marginHorizontal: 16,
     padding: 18,
@@ -242,8 +245,23 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     marginBottom: 20,
   },
-  name: { fontSize: 22, fontWeight: '800', color: colors.text },
-  email: { fontSize: 14, color: colors.textMuted, marginTop: 4 },
+  avatarWrap: { alignItems: 'center', marginBottom: 14 },
+  avatarCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  avatarText: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: 1 },
+  name: { fontSize: 22, fontWeight: '800', color: colors.text, textAlign: 'center' },
+  email: { fontSize: 14, color: colors.textMuted, marginTop: 4, textAlign: 'center' },
   creditsCard: {
     marginTop: 16,
     padding: 16,

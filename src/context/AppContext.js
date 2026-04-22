@@ -147,7 +147,7 @@ export function AppProvider({ children }) {
         return { carKey };
       }
 
-      const reviewId = uuidish();
+      const reviewId = randomId();
       let storedPhotoUri = photoUri;
       if (photoUri) {
         const dir = `${FileSystem.documentDirectory}photos/`;

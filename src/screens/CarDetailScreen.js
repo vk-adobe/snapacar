@@ -1,6 +1,6 @@
 import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useLayoutEffect } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReviewCard } from '../components/ReviewCard';
 import { StarText } from '../components/StarRow';
@@ -41,6 +41,7 @@ export default function CarDetailScreen({ route, navigation }) {
   }, [navigation, meta]);
 
   const photos = reviews.filter((r) => r.photoUri).map((r) => r.photoUri);
+  const heroPhoto = photos[0] || null;
 
   return (
     <View style={[styles.safe, { paddingBottom: insets.bottom }]}>
@@ -48,21 +49,41 @@ export default function CarDetailScreen({ route, navigation }) {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.hero}>
-          {meta.year ? (
-            <Text style={styles.year}>{meta.year}</Text>
-          ) : null}
-          <Text style={styles.make}>{meta.make}</Text>
-          <Text style={styles.model}>{meta.model}</Text>
-          {avg != null ? (
-            <View style={styles.avgRow}>
-              <StarText rating={avg} />
-              <Text style={styles.avgHint}> · {reviews.length} spots</Text>
+        {/* Hero — photo if available, else text card */}
+        {heroPhoto ? (
+          <View style={styles.heroPhotoWrap}>
+            <Image source={{ uri: heroPhoto }} style={styles.heroPhoto} resizeMode="cover" />
+            <View style={styles.heroOverlayAll} />
+            <View style={styles.heroOverlayBottom} />
+            <View style={styles.heroInfoOverlay}>
+              {meta.year ? <Text style={styles.heroYear}>{meta.year}</Text> : null}
+              <Text style={styles.heroMake}>{meta.make}</Text>
+              <Text style={styles.heroModel}>{meta.model}</Text>
+              {avg != null ? (
+                <View style={styles.avgRow}>
+                  <StarText rating={avg} />
+                  <Text style={styles.avgHint}> · {reviews.length} spots</Text>
+                </View>
+              ) : null}
             </View>
-          ) : (
-            <Text style={styles.noRev}>No spots yet.</Text>
-          )}
-        </View>
+          </View>
+        ) : (
+          <View style={styles.hero}>
+            {meta.year ? (
+              <Text style={styles.year}>{meta.year}</Text>
+            ) : null}
+            <Text style={styles.make}>{meta.make}</Text>
+            <Text style={styles.model}>{meta.model}</Text>
+            {avg != null ? (
+              <View style={styles.avgRow}>
+                <StarText rating={avg} />
+                <Text style={styles.avgHint}> · {reviews.length} spots</Text>
+              </View>
+            ) : (
+              <Text style={styles.noRev}>No spots yet.</Text>
+            )}
+          </View>
+        )}
 
         <Pressable
           style={({ pressed }) => [styles.cta, pressed && { opacity: 0.92 }]}
@@ -122,6 +143,34 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 40 },
   headerBtn: { paddingHorizontal: 12, paddingVertical: 8, marginRight: 4 },
   headerBtnText: { color: colors.accent, fontWeight: '600', fontSize: 16 },
+  heroPhotoWrap: {
+    width: '100%',
+    height: 240,
+    borderRadius: radius.xl,
+    overflow: 'hidden',
+    marginBottom: 16,
+    position: 'relative',
+  },
+  heroPhoto: { width: '100%', height: '100%', backgroundColor: colors.bgElevated },
+  heroOverlayAll: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
+  heroOverlayBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '65%',
+    backgroundColor: 'rgba(10,12,16,0.88)',
+  },
+  heroInfoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 18,
+  },
+  heroYear: { fontSize: 12, fontWeight: '700', color: colors.primary, marginBottom: 4, letterSpacing: 0.5 },
+  heroMake: { fontSize: 11, fontWeight: '700', color: 'rgba(240,243,249,0.55)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
+  heroModel: { fontSize: 28, fontWeight: '800', color: colors.text, letterSpacing: -0.5, marginBottom: 10 },
   hero: {
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
@@ -133,7 +182,7 @@ const styles = StyleSheet.create({
   year: { fontSize: 13, fontWeight: '700', color: colors.primary },
   make: { fontSize: 13, color: colors.textMuted, marginTop: 6, textTransform: 'uppercase', letterSpacing: 1 },
   model: { fontSize: 26, fontWeight: '800', color: colors.text, marginTop: 4 },
-  avgRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 16, flexWrap: 'wrap' },
+  avgRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4, flexWrap: 'wrap' },
   avgHint: { fontSize: 13, color: colors.textMuted },
   noRev: { marginTop: 16, color: colors.textMuted, fontSize: 14 },
   cta: {

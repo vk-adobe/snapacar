@@ -22,7 +22,14 @@ export function ReviewCard({ review, social }) {
         <View style={styles.head}>
           <View style={styles.leftMeta}>
             {review.authorName ? (
-              <Text style={styles.author}>{review.authorName}</Text>
+              <View style={styles.authorRow}>
+                <View style={styles.authorAvatar}>
+                  <Text style={styles.authorInitial}>
+                    {review.authorName[0]?.toUpperCase() || '?'}
+                  </Text>
+                </View>
+                <Text style={styles.author}>{review.authorName}</Text>
+              </View>
             ) : null}
             <StarRow value={review.rating} readonly size={20} />
           </View>
@@ -63,7 +70,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   leftMeta: { flex: 1, marginRight: 8 },
-  author: { fontSize: 13, fontWeight: '600', color: colors.accent, marginBottom: 6 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  authorAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.accentDim,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authorInitial: { fontSize: 11, fontWeight: '800', color: colors.accent },
+  author: { fontSize: 13, fontWeight: '600', color: colors.accent },
   date: { fontSize: 12, color: colors.textMuted },
   plate: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
   comment: { marginTop: 8, fontSize: 15, color: colors.text, lineHeight: 22 },

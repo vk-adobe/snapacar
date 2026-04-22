@@ -20,6 +20,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { StarRow } from '../components/StarRow';
 import { useApp } from '../context/AppContext';
 import { analyzeCarImage } from '../services/carAnalysis';
+import { normalizePlate } from '../utils/plate';
 import { colors, radius } from '../theme';
 
 export default function CaptureScreen({ route, navigation }) {
@@ -37,6 +38,7 @@ export default function CaptureScreen({ route, navigation }) {
   const [photoUri, setPhotoUri] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [plateError, setPlateError] = useState('');
 
   useEffect(() => {
     if (pref.prefilledMake) setMake(pref.prefilledMake);
@@ -87,23 +89,66 @@ export default function CaptureScreen({ route, navigation }) {
     setAnalyzing(true);
     try {
       const res = await analyzeCarImage(photoUri);
-      if (res.error && res.error !== 'SUPABASE_REQUIRED') {
-        Alert.alert('Analysis', res.error || 'Could not analyze. Enter details manually.');
+
+      if (res.error) {
+        if (res.notDeployed) {
+          Alert.alert(
+            'OCR not deployed',
+            'The analyze-car-image edge function is not deployed yet.\n\nTo deploy it, run:\n  ./scripts/deploy-edge-functions.sh <token>\n\nGet your token from supabase.com/dashboard/account/tokens\n\nYou can still fill in the car details manually below.',
+            [{ text: 'OK, I\'ll fill manually' }]
+          );
+        } else if (res.error !== 'SUPABASE_REQUIRED') {
+          Alert.alert('Analysis failed', res.error || 'Could not analyze. Enter details manually.');
+        }
+        return;
       }
-      if (res.plateGuess) setLicensePlate(res.plateGuess);
-      if (res.hints?.make) setMake((m) => m || res.hints.make);
-      if (res.hints?.model) setModel((m) => m || res.hints.model);
-      if (res.labels?.length) {
+
+      const filled = [];
+
+      // Always overwrite with OCR results — user can correct manually after
+      const plate = res.plateNormalized || res.plateGuess || null;
+      if (plate) {
+        setLicensePlate(plate);
+        setPlateError('');
+        filled.push(`Plate: ${plate}`);
+      }
+      if (res.hints?.make) {
+        setMake(res.hints.make);
+        filled.push(`Make: ${res.hints.make}`);
+      }
+      if (res.hints?.model) {
+        setModel(res.hints.model);
+        filled.push(`Model: ${res.hints.model}`);
+      }
+
+      if (filled.length > 0) {
         Alert.alert(
-          'Hints from image',
-          `Labels: ${res.labels.slice(0, 5).join(', ')}\n\nConfirm make/model — auto-detect is approximate.`
+          'Auto-filled from photo ✓',
+          `${filled.join('\n')}\n\nPlease confirm the details look correct.`
         );
-      } else if (!res.plateGuess && !res.hints?.make) {
-        Alert.alert('No strong match', 'Try a clearer plate shot, or type make/model yourself.');
+      } else {
+        Alert.alert(
+          'No match found',
+          'Couldn\'t detect a plate or car details from this photo. Try a closer shot, or enter the details manually.'
+        );
       }
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const validatePlate = (value) => {
+    if (!value.trim()) return '';
+    const norm = normalizePlate(value);
+    if (norm.length < 2) return 'Too short — enter at least 2 characters.';
+    if (norm.length > 10) return 'Too long — most plates are under 10 characters.';
+    if (!/^[A-Z0-9]+$/.test(norm)) return 'Only letters and numbers are allowed.';
+    return '';
+  };
+
+  const onPlateChange = (value) => {
+    setLicensePlate(value);
+    setPlateError(validatePlate(value));
   };
 
   const submit = useCallback(async () => {
@@ -114,6 +159,13 @@ export default function CaptureScreen({ route, navigation }) {
     if (!photoUri) {
       Alert.alert('Photo', 'Take or choose a photo of the car.');
       return;
+    }
+    if (licensePlate.trim()) {
+      const err = validatePlate(licensePlate);
+      if (err) {
+        Alert.alert('License plate', err);
+        return;
+      }
     }
     setSubmitting(true);
     try {
@@ -129,6 +181,7 @@ export default function CaptureScreen({ route, navigation }) {
       setComment('');
       setPhotoUri(null);
       setLicensePlate('');
+      setPlateError('');
       setRating(5);
       Alert.alert('Spot posted!', 'Your review is live. You earned credits on the server.', [
         { text: 'View feed', onPress: () => navigation.navigate('Feed', { screen: 'FeedHome' }) },
@@ -261,12 +314,16 @@ export default function CaptureScreen({ route, navigation }) {
         <Text style={styles.label}>License plate (optional)</Text>
         <TextInput
           value={licensePlate}
-          onChangeText={setLicensePlate}
+          onChangeText={onPlateChange}
           placeholder="Auto-filled after OCR or type it"
           placeholderTextColor={colors.textMuted}
-          style={styles.input}
+          style={[styles.input, plateError ? styles.inputError : null]}
           autoCapitalize="characters"
+          autoCorrect={false}
         />
+        {plateError ? (
+          <Text style={styles.fieldError}>{plateError}</Text>
+        ) : null}
 
         <View style={styles.divider} />
 
@@ -420,6 +477,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     color: colors.text,
     marginBottom: 8,
+  },
+  inputError: {
+    borderColor: colors.danger,
+  },
+  fieldError: {
+    fontSize: 12,
+    color: colors.danger,
+    marginTop: -10,
+    marginBottom: 12,
   },
   submitWrap: { marginTop: 12, marginBottom: 8 },
 });

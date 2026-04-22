@@ -8,10 +8,8 @@ const BUCKET = 'car-images';
 const UPLOAD_FETCH_MS = 45000;
 const DB_MS = 30000;
 
-/**
- * Prefer fetch(blob); fall back to base64 read (works when fetch() hangs on Android content://).
- */
-async function blobFromFileSystem(localUri) {
+/** Base64 file read → ArrayBuffer (Supabase RN: Blob bodies often yield "Network request failed"). */
+async function arrayBufferFromFileSystem(localUri) {
   const b64 = await withTimeout(
     FileSystem.readAsStringAsync(localUri, {
       encoding: FileSystem.EncodingType.Base64,
@@ -24,11 +22,15 @@ async function blobFromFileSystem(localUri) {
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i += 1) bytes[i] = binaryString.charCodeAt(i);
-  return new Blob([bytes], { type: 'image/jpeg' });
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 }
 
-async function blobFromUri(localUri) {
-  // RN: fetch() sometimes works but res.blob() can hang on large images; filesystem path is more reliable.
+/**
+ * Image bytes for storage upload. Prefer filesystem base64 (reliable for content:// on Android);
+ * avoid Blob — React Native fetch + Blob is not supported for Supabase storage uploads.
+ * @see https://github.com/supabase/supabase-js/blob/master/packages/storage-js/src/packages/StorageFileApi.ts
+ */
+async function arrayBufferFromUri(localUri) {
   if (
     localUri &&
     (localUri.startsWith('file:') ||
@@ -37,7 +39,7 @@ async function blobFromUri(localUri) {
       localUri.startsWith('asset'))
   ) {
     try {
-      return await blobFromFileSystem(localUri);
+      return await arrayBufferFromFileSystem(localUri);
     } catch {
       /* fall through to fetch */
     }
@@ -49,26 +51,41 @@ async function blobFromUri(localUri) {
     if (!res.ok) {
       throw new Error(`Could not read image (${res.status})`);
     }
-    return await withTimeout(res.blob(), 30000, 'Decode image');
+    const blob = await withTimeout(res.blob(), 30000, 'Decode image');
+    if (typeof blob.arrayBuffer === 'function') {
+      return await blob.arrayBuffer();
+    }
   } catch {
-    return blobFromFileSystem(localUri);
+    /* use filesystem */
   } finally {
     clearTimeout(timer);
   }
+  return arrayBufferFromFileSystem(localUri);
 }
 
 export async function uploadCarImage(localUri, userId, postId) {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase not configured');
   const path = `${userId}/${postId}.jpg`;
-  const blob = await blobFromUri(localUri);
+  const body = await arrayBufferFromUri(localUri);
 
-  const uploadPromise = sb.storage.from(BUCKET).upload(path, blob, {
+  const uploadPromise = sb.storage.from(BUCKET).upload(path, body, {
     contentType: 'image/jpeg',
     upsert: true,
   });
 
-  const uploadResult = await withTimeout(uploadPromise, UPLOAD_FETCH_MS, 'Upload to storage');
+  let uploadResult;
+  try {
+    uploadResult = await withTimeout(uploadPromise, UPLOAD_FETCH_MS, 'Upload to storage');
+  } catch (e) {
+    const m = e?.message || String(e);
+    if (/network request failed|failed to fetch|load failed/i.test(m)) {
+      throw new Error(
+        'Photo upload could not reach Supabase. Check Wi‑Fi, VPN/firewall, and EXPO_PUBLIC_SUPABASE_URL. On React Native, large uploads used to fail with Blobs — this build uses ArrayBuffer; reload the app and try again.'
+      );
+    }
+    throw e;
+  }
   const error = uploadResult?.error;
 
   if (error) {
@@ -97,7 +114,12 @@ function formatInsertError(error) {
   }
   if (code === '42501' || /row-level security|RLS/i.test(msg)) {
     return new Error(
-      'Permission denied (RLS). Check policies on `posts` in Supabase → Authentication was successful.'
+      'Permission denied (RLS). Check policies on `posts` in Supabase → Authentication → Policies.'
+    );
+  }
+  if (code === '23503' || /foreign key|violates foreign key constraint/i.test(msg)) {
+    return new Error(
+      'Your account profile is missing in the database. Sign out and sign back in — this recreates your profile row automatically.'
     );
   }
   return error;
@@ -117,6 +139,15 @@ export async function insertPost({
   if (!sb) throw new Error('Supabase not configured');
   const car_key = makeCarKey(make, model, year);
   const plate_normalized = licensePlate ? normalizePlate(licensePlate) : '';
+
+  // Ensure the profile row exists — the posts FK requires it.
+  // The handle_new_user trigger normally creates it, but can miss if the trigger
+  // wasn't installed yet when the account was first created.
+  await withTimeout(
+    sb.from('profiles').upsert({ id: userId }, { onConflict: 'id', ignoreDuplicates: true }),
+    DB_MS,
+    'Ensure profile'
+  ).catch(() => {}); // non-fatal: insert will surface the error if profile truly can't be created
 
   const profResult = await withTimeout(
     sb.from('profiles').select('full_name').eq('id', userId).maybeSingle(),
@@ -217,21 +248,29 @@ export async function fetchMyPosts(userId) {
 export async function fetchProfile(userId) {
   const sb = getSupabase();
   if (!sb) return null;
-  const { data, error } = await sb.from('profiles').select('*').eq('id', userId).maybeSingle();
-  if (error) return null;
-  return data;
+  try {
+    const result = await withTimeout(
+      sb.from('profiles').select('*').eq('id', userId).maybeSingle(),
+      DB_MS,
+      'Fetch profile'
+    );
+    if (result.error) return null;
+    return result.data;
+  } catch {
+    return null;
+  }
 }
 
 export async function upsertProfile(userId, fields) {
   const sb = getSupabase();
   if (!sb) throw new Error('Supabase not configured');
-  const { error } = await sb.from('profiles').upsert(
-    {
-      id: userId,
-      ...fields,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'id' }
+  const result = await withTimeout(
+    sb.from('profiles').upsert(
+      { id: userId, ...fields, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    ),
+    DB_MS,
+    'Save profile'
   );
-  if (error) throw error;
+  if (result?.error) throw result.error;
 }

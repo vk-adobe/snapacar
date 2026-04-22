@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
@@ -101,12 +101,18 @@ function MainTabs() {
           paddingTop: 6,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        tabBarIcon: ({ color, size }) => {
+        tabBarIcon: ({ color, size, focused }) => {
+          if (route.name === 'Add') {
+            return (
+              <View style={spotTabStyles.spotBtn}>
+                <Ionicons name="camera" size={22} color="#fff" />
+              </View>
+            );
+          }
           const map = {
-            Feed: 'grid-outline',
-            Add: 'camera-outline',
-            Rank: 'trophy-outline',
-            Profile: 'person-outline',
+            Feed: focused ? 'grid' : 'grid-outline',
+            Rank: focused ? 'trophy' : 'trophy-outline',
+            Profile: focused ? 'person' : 'person-outline',
           };
           const name = map[route.name] || 'ellipse';
           return <Ionicons name={name} size={size} color={color} />;
@@ -120,6 +126,23 @@ function MainTabs() {
     </Tab.Navigator>
   );
 }
+
+const spotTabStyles = StyleSheet.create({
+  spotBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+});
 
 export default function RootNavigator() {
   const { session } = useAuth();

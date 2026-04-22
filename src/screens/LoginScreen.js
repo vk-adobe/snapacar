@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppLogo } from '../components/AppLogo';
 import { PasswordField } from '../components/PasswordField';
@@ -78,12 +79,21 @@ export default function LoginScreen({ navigation }) {
           ]}
           showsVerticalScrollIndicator={false}
         >
+          {/* Decorative dots */}
+          <View style={styles.dotRow}>
+            <View style={[styles.dot, styles.dotLg]} />
+            <View style={[styles.dot, styles.dotSm]} />
+            <View style={[styles.dot, styles.dotMd]} />
+          </View>
           <View style={styles.heroStripe} />
-          <AppLogo size={88} style={styles.logoImg} />
+          <AppLogo size={96} style={styles.logoImg} />
           <Text style={styles.logo}>SnapACar</Text>
-          <Text style={styles.tagline}>
-            Spot cool cars in the wild. Snap, rate, and flex your finds.
-          </Text>
+          <View style={styles.taglineRow}>
+            <Ionicons name="car-sport" size={14} color={colors.primary} />
+            <Text style={styles.tagline}>
+              Spot cool cars in the wild. Snap, rate, and flex your finds.
+            </Text>
+          </View>
 
           {!isSupabaseConfigured() ? (
             <Text style={styles.warn}>
@@ -98,10 +108,11 @@ export default function LoginScreen({ navigation }) {
                 disabled={busyAny || !request}
                 style={({ pressed }) => [
                   styles.googleBtn,
-                  pressed && { opacity: 0.92 },
+                  pressed && { opacity: 0.88 },
                   (busyAny || !request) && { opacity: 0.55 },
                 ]}
               >
+                <Ionicons name="logo-google" size={18} color={colors.text} />
                 <Text style={styles.googleLabel}>Continue with Google</Text>
               </Pressable>
               <Text style={styles.or}>or sign in with email</Text>
@@ -148,31 +159,49 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { paddingHorizontal: 22 },
+  dotRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  dot: { borderRadius: 99, backgroundColor: colors.primary, opacity: 0.35 },
+  dotLg: { width: 10, height: 10 },
+  dotMd: { width: 7, height: 7 },
+  dotSm: { width: 5, height: 5 },
   heroStripe: {
     alignSelf: 'center',
-    width: 56,
-    height: 4,
+    width: 64,
+    height: 3,
     borderRadius: 2,
-    backgroundColor: colors.glowLine,
-    marginBottom: 20,
-    opacity: 0.9,
+    backgroundColor: colors.primary,
+    marginBottom: 22,
+    opacity: 0.85,
   },
-  logoImg: { marginBottom: 12 },
+  logoImg: { marginBottom: 14 },
   logo: {
-    fontSize: 30,
+    fontSize: 34,
     fontWeight: '800',
     color: colors.text,
-    letterSpacing: -0.6,
-    marginBottom: 8,
+    letterSpacing: -1,
+    marginBottom: 10,
     textAlign: 'center',
   },
-  tagline: {
-    fontSize: 15,
-    color: colors.textMuted,
-    marginBottom: 26,
-    lineHeight: 22,
-    textAlign: 'center',
+  taglineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 28,
     paddingHorizontal: 8,
+    justifyContent: 'center',
+  },
+  tagline: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textMuted,
+    lineHeight: 21,
+    textAlign: 'center',
   },
   warn: {
     fontSize: 13,
@@ -195,6 +224,9 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: radius.md,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
   },
   googleLabel: { color: colors.text, fontWeight: '700', fontSize: 16 },
   or: { textAlign: 'center', color: colors.textMuted, marginVertical: 18, fontSize: 13 },

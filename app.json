@@ -34,6 +34,11 @@
       "checkAutomatically": "NEVER",
       "fallbackToCacheTimeout": 0
     },
+    "extra": {
+      "eas": {
+        "projectId": "928b3150-3f6e-436e-8136-db8bb319de27"
+      }
+    },
     "plugins": [
       [
         "expo-image-picker",

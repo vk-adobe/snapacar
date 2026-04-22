@@ -10,7 +10,40 @@
     "prebuild": "expo prebuild",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "eas:link": "node scripts/eas-link-project.js"
+    "eas:link": "node scripts/eas-link-project.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": ["**/__tests__/**/*.test.[jt]s?(x)"],
+    "transform": {
+      "^.+\\.[jt]sx?$": ["babel-jest", { "configFile": "./babel.config.test.js" }]
+    },
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-native|@react-native|@react-native-community|@expo|expo|react-navigation|@react-navigation)/)"
+    ],
+    "moduleNameMapper": {
+      "\\.(png|jpg|jpeg|gif|svg|ttf|otf|woff|woff2)$": "<rootDir>/__mocks__/fileMock.js",
+      "^react-native$": "<rootDir>/__mocks__/react-native.js",
+      "^react-native/(.*)$": "<rootDir>/__mocks__/emptyModule.js",
+      "^@expo/vector-icons$": "<rootDir>/__mocks__/@expo/vector-icons.js",
+      "^expo-file-system/legacy$": "<rootDir>/__mocks__/expoFileSystem.js",
+      "^expo-file-system$": "<rootDir>/__mocks__/expoFileSystem.js",
+      "^expo-image-picker$": "<rootDir>/__mocks__/emptyModule.js",
+      "^expo-sharing$": "<rootDir>/__mocks__/emptyModule.js",
+      "^expo-constants$": "<rootDir>/__mocks__/emptyModule.js",
+      "^expo-crypto$": "<rootDir>/__mocks__/emptyModule.js",
+      "^expo-web-browser$": "<rootDir>/__mocks__/expoWebBrowser.js",
+      "^expo-auth-session$": "<rootDir>/__mocks__/emptyModule.js",
+      "^expo-status-bar$": "<rootDir>/__mocks__/emptyModule.js",
+      "^expo$": "<rootDir>/__mocks__/emptyModule.js",
+      "^@react-native-async-storage/async-storage$": "<rootDir>/__mocks__/asyncStorage.js",
+      "^react-native-safe-area-context$": "<rootDir>/__mocks__/emptyModule.js",
+      "^react-native-screens$": "<rootDir>/__mocks__/emptyModule.js"
+    },
+    "setupFiles": ["<rootDir>/jest.setup.js"]
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -36,6 +69,13 @@
   },
   "private": true,
   "devDependencies": {
-    "@types/react": "~19.1.10"
+    "@babel/preset-env": "^7.29.2",
+    "@babel/preset-react": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/react": "~19.1.10",
+    "jest": "^30.3.0",
+    "react-test-renderer": "^19.1.0"
   }
 }

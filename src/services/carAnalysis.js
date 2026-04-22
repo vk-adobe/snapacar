@@ -3,8 +3,10 @@ import { getSupabase } from '../lib/supabase';
 import { normalizePlate } from '../utils/plate';
 import { withTimeout } from '../utils/asyncTimeout';
 
-const READ_FILE_MS = 25000;
-const INVOKE_MS = 45000;
+const READ_FILE_MS = 15000;
+const INVOKE_MS = 15000;
+// Base64 chars per byte is 4/3 — keep total payload well under Supabase's 6 MB function limit
+const MAX_BASE64_CHARS = 1_500_000; // ~1.1 MB image
 
 function normalizeImageBase64(input) {
   if (!input || typeof input !== 'string') return '';
@@ -55,6 +57,18 @@ export async function analyzeCarImage(localUri) {
       };
     }
 
+    if (base64.length > MAX_BASE64_CHARS) {
+      return {
+        plateGuess: null,
+        labels: [],
+        hints: {},
+        error:
+          'Photo is too large for OCR (' +
+          Math.round(base64.length / 1024) +
+          ' KB). Use the Library picker and choose a smaller image, or take a closer shot so the plate fills more of the frame.',
+      };
+    }
+
     const invokeOnce = sb.functions.invoke('analyze-car-image', {
       body: { imageBase64: base64 },
     });
@@ -62,14 +76,15 @@ export async function analyzeCarImage(localUri) {
     const { data, error } = await withTimeout(invokeOnce, INVOKE_MS, 'OCR service');
 
     if (error) {
-      const msg =
-        error.message ||
-        (typeof error === 'string' ? error : 'Edge function error');
-      const hint =
-        /not\s*found|404|function|deploy/i.test(msg)
-          ? ' Deploy `analyze-car-image` in Supabase → Edge Functions, or OCR is disabled.'
-          : '';
-      return { plateGuess: null, labels: [], hints: {}, error: msg + hint };
+      const msg = error.message || (typeof error === 'string' ? error : 'Edge function error');
+      if (/not\s*found|404|function|deploy/i.test(msg)) {
+        return {
+          plateGuess: null, labels: [], hints: {},
+          error: 'OCR not set up yet. Run: ./scripts/deploy-edge-functions.sh <token>\n(Get token from supabase.com/dashboard/account/tokens)',
+          notDeployed: true,
+        };
+      }
+      return { plateGuess: null, labels: [], hints: {}, error: msg };
     }
 
     const plateGuess = data?.plateGuess ? normalizePlate(data.plateGuess) : null;

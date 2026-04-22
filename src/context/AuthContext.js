@@ -183,7 +183,8 @@ export function AuthProvider({ children }) {
   const updateProfileFields = useCallback(
     async (fields) => {
       const uid = supabaseSession?.user?.id;
-      if (!uid || !cloud) return;
+      if (!cloud) throw new Error('Supabase not configured. Add credentials to .env and restart.');
+      if (!uid) throw new Error('Not signed in. Sign out and sign back in to get a cloud session.');
       await upsertProfile(uid, fields);
       await refreshProfile();
     },

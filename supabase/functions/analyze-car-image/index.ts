@@ -27,24 +27,39 @@ serve(async (req) => {
         { headers: { 'Content-Type': 'application/json' } }
       );
     }
-    const visionRes = await fetch(
-      `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requests: [
-            {
-              image: { content: imageBase64 },
-              features: [
-                { type: 'TEXT_DETECTION', maxResults: 10 },
-                { type: 'LABEL_DETECTION', maxResults: 8 },
-              ],
-            },
-          ],
-        }),
-      }
-    );
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10_000);
+    let visionRes: Response;
+    try {
+      visionRes = await fetch(
+        `https://vision.googleapis.com/v1/images:annotate?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: ctrl.signal,
+          body: JSON.stringify({
+            requests: [
+              {
+                image: { content: imageBase64 },
+                features: [
+                  { type: 'TEXT_DETECTION', maxResults: 10 },
+                  { type: 'LABEL_DETECTION', maxResults: 8 },
+                ],
+              },
+            ],
+          }),
+        }
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!visionRes.ok) {
+      const errText = await visionRes.text().catch(() => visionRes.statusText);
+      return new Response(
+        JSON.stringify({ plateGuess: null, labels: [], hints: {}, error: `Vision API error ${visionRes.status}: ${errText.slice(0, 200)}` }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     const visionJson = await visionRes.json();
     const ann = visionJson?.responses?.[0];
     const text = ann?.fullTextAnnotation?.text || '';
